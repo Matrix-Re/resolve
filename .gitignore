@@ -1,0 +1,11 @@
+# Environnement virtuel
+.venv/
+
+# Python
+__pycache__/
+
+# IDE
+.idea/
+
+# Cache
+.ruff_cache/
