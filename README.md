@@ -29,3 +29,8 @@ Utiliser la commande ruff pour formatter le code et le rendre plus lisible
 ruff check .
 ruff format .
 ```
+
+## Lancement des tests
+```bash
+pytest
+```
