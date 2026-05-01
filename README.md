@@ -30,7 +30,22 @@ ruff check .
 ruff format .
 ```
 
-## Lancement des tests
+## Lancer le server minimaliste
+```bash
+python -m servers.server
+```
+
+## Lancer une requete DNS
+```bash
+python -m client.cli {domain} --type {type} --host 127.0.0.1 --port 5300
+```
+
+ex :
+```bash
+python -m client.cli google.com --type A --host 127.0.0.1 --port 5300
+```
+
+## Lancement les tests
 ```bash
 pytest
 ```
