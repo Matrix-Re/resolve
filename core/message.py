@@ -8,6 +8,11 @@ class DNSQuery:
     domain: str
     record_type: str
 
+    def __post_init__(self) -> None:
+        self.message_type = self.message_type.strip().lower()
+        self.domain = self.domain.strip().lower().removesuffix(".")
+        self.record_type = self.record_type.strip().upper()
+
     def to_json(self) -> str:
         return json.dumps(asdict(self))
 
