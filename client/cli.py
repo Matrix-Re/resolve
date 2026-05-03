@@ -57,9 +57,7 @@ def display_response(response: Dict[str, Any]) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="DNS CLI Client (ReSolve)"
-    )
+    parser = argparse.ArgumentParser(description="DNS CLI Client (ReSolve)")
 
     parser.add_argument(
         "domain",

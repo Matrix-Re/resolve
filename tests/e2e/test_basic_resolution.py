@@ -19,11 +19,7 @@ def test_server_response():
     # Laisser le temps au serveur de démarrer
     time.sleep(0.5)
 
-    query = {
-        "message_type": "query",
-        "domain": "google.com",
-        "record_type": "A"
-    }
+    query = {"message_type": "query", "domain": "google.com", "record_type": "A"}
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(2)
