@@ -6,6 +6,7 @@ __pycache__/
 
 # IDE
 .idea/
+.vscode/
 
 # Cache
 .ruff_cache/
