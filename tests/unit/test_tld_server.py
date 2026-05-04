@@ -5,6 +5,7 @@ import pytest
 
 from core.message import DNSQuery
 from servers.tld_server import TLDServer
+from core.config import load_json_file
 
 
 def create_tld_config(config_path: Path) -> None:
@@ -32,7 +33,7 @@ def tld_server(tmp_path: Path) -> TLDServer:
 
 
 def test_load_config(tld_server: TLDServer) -> None:
-    config = tld_server.load_config()
+    config = load_json_file(tld_server.config_path)
 
     assert config["google.com"]["host"] == "127.0.0.1"
     assert config["google.com"]["port"] == 5302
@@ -113,7 +114,7 @@ def test_load_missing_config_raises_file_not_found(tmp_path: Path) -> None:
     )
 
     with pytest.raises(FileNotFoundError):
-        server.load_config()
+        load_json_file(server.config_path)
 
 
 def test_load_invalid_config_raises_value_error(tmp_path: Path) -> None:
@@ -130,7 +131,7 @@ def test_load_invalid_config_raises_value_error(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ValueError):
-        server.load_config()
+        load_json_file(server.config_path)
 
 
 def test_handle_request_with_invalid_json_returns_error(

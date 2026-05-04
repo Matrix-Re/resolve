@@ -1,48 +1,32 @@
 import argparse
-import json
-import socket
 from pathlib import Path
-from typing import Any
 
+from core.server import BaseDNSServer
 from core.message import DNSQuery, DNSResponse
 from core.utils import extract_zone_domain
+from core.config import load_json_file
 
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 5301
 BUFFER_SIZE = 4096
-DEFAULT_TLD_CONFIG_PATH = "data/tld.json"
+DEFAULT_TLD_CONFIG_PATH = "data/tld"
 
 
-class TLDServer:
+class TLDServer(BaseDNSServer):
     """
     TLD DNS server.
 
     This server is responsible for redirecting a domain to its authoritative server.
-    Example:
-    - maps.google.com -> google.com -> 127.0.0.1:5302
     """
 
+    @property
+    def server_name(self) -> str:
+        return "TLD"
+
     def __init__(self, host: str, port: int, config_path: str) -> None:
-        self.host = host
-        self.port = port
+        super().__init__(host, port)
         self.config_path = Path(config_path)
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-    def load_config(self) -> dict[str, Any]:
-        """
-        Load the TLD configuration file.
-        """
-        if not self.config_path.exists():
-            raise FileNotFoundError(f"TLD config file not found: {self.config_path}")
-
-        with self.config_path.open("r", encoding="utf-8") as file:
-            config = json.load(file)
-
-        if not isinstance(config, dict):
-            raise ValueError("Invalid TLD config: root element must be an object")
-
-        return config
 
     def start(self) -> None:
         """
@@ -57,57 +41,11 @@ class TLDServer:
             response = self.handle_request(data)
             self.socket.sendto(response.to_json().encode("utf-8"), address)
 
-    def handle_request(self, data: bytes) -> DNSResponse:
-        """
-        Decode and process an incoming request.
-        """
-        try:
-            payload = data.decode("utf-8")
-            query = DNSQuery.from_json(payload)
-
-            return self.resolve(query)
-
-        except json.JSONDecodeError:
-            return self.build_error_response(
-                error_code="INVALID_JSON",
-                error_message="Request payload is not valid JSON",
-            )
-
-        except KeyError as error:
-            return self.build_error_response(
-                error_code="INVALID_REQUEST",
-                error_message=f"Missing field: {error.args[0]}",
-            )
-
-        except UnicodeDecodeError:
-            return self.build_error_response(
-                error_code="INVALID_ENCODING",
-                error_message="Request payload must be UTF-8 encoded",
-            )
-
-        except FileNotFoundError as error:
-            return self.build_error_response(
-                error_code="TLD_CONFIG_NOT_FOUND",
-                error_message=str(error),
-            )
-
-        except ValueError as error:
-            return self.build_error_response(
-                error_code="INVALID_TLD_CONFIG",
-                error_message=str(error),
-            )
-
-        except Exception as error:
-            return self.build_error_response(
-                error_code="SERVER_ERROR",
-                error_message=str(error),
-            )
-
     def resolve(self, query: DNSQuery) -> DNSResponse:
         """
         Resolve a query by returning the authoritative server address.
         """
-        config = self.load_config()
+        config = load_json_file(self.config_path)
 
         zone_domain = extract_zone_domain(query.domain)
         authoritative_server = config.get(zone_domain)
@@ -136,17 +74,6 @@ class TLDServer:
             record_type="AUTHORITATIVE",
             value=authoritative_server_address,
             ttl=None,
-        )
-
-    def build_error_response(self, error_code: str, error_message: str) -> DNSResponse:
-        """
-        Build a standard DNS error response.
-        """
-        return DNSResponse(
-            message_type="response",
-            status="error",
-            error_code=error_code,
-            error_message=error_message,
         )
 
 

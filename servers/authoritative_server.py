@@ -1,11 +1,11 @@
 import argparse
-import json
-import socket
 from pathlib import Path
 from typing import Any
 
+from core.server import BaseDNSServer
 from core.message import DNSQuery, DNSResponse
 from core.utils import extract_zone_domain
+from core.config import load_json_file
 
 
 DEFAULT_HOST = "127.0.0.1"
@@ -14,37 +14,20 @@ BUFFER_SIZE = 4096
 DEFAULT_ZONE_PATH = "data/zones/"
 
 
-class AuthoritativeServer:
+class AuthoritativeServer(BaseDNSServer):
     """
     Authoritative DNS server.
 
     This server is responsible for resolving records contained in a DNS zone.
     """
 
+    @property
+    def server_name(self) -> str:
+        return "AUTH"
+
     def __init__(self, host: str, port: int, zone_path: str) -> None:
-        self.host = host
-        self.port = port
+        super().__init__(host, port)
         self.zone_path = Path(zone_path)
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-    def load_zone(self, zone_name: str) -> dict[str, Any]:
-        """
-        Load a DNS zone from a JSON file.
-        """
-        zone_file = self.zone_path / f"{zone_name}.json"
-        if not zone_file.exists():
-            raise FileNotFoundError(f"Zone file not found: {zone_file}")
-
-        with zone_file.open("r", encoding="utf-8") as file:
-            zone = json.load(file)
-
-        if "domain" not in zone:
-            raise ValueError("Invalid zone file: missing 'domain' field")
-
-        if "records" not in zone:
-            raise ValueError("Invalid zone file: missing 'records' field")
-
-        return zone
 
     def start(self) -> None:
         """
@@ -59,45 +42,19 @@ class AuthoritativeServer:
             response = self.handle_request(data)
             self.socket.sendto(response.to_json().encode("utf-8"), address)
 
-    def handle_request(self, data: bytes) -> DNSResponse:
+    def load_zone(self, zone_name: str) -> dict[str, Any]:
         """
-        Decode and process an incoming request.
+        Load a DNS zone from a JSON file.
         """
-        try:
-            payload = data.decode("utf-8")
-            query = DNSQuery.from_json(payload)
+        zone = load_json_file(f"{self.zone_path}/{zone_name}")
 
-            return self.resolve(query)
+        if "domain" not in zone:
+            raise ValueError("Invalid zone file: missing 'domain' field")
 
-        except json.JSONDecodeError:
-            return self.build_error_response(
-                error_code="INVALID_JSON",
-                error_message="Request payload is not valid JSON",
-            )
+        if "records" not in zone:
+            raise ValueError("Invalid zone file: missing 'records' field")
 
-        except KeyError as error:
-            return self.build_error_response(
-                error_code="INVALID_REQUEST",
-                error_message=f"Missing field: {error.args[0]}",
-            )
-
-        except UnicodeDecodeError:
-            return self.build_error_response(
-                error_code="INVALID_ENCODING",
-                error_message="Request payload must be UTF-8 encoded",
-            )
-
-        except FileNotFoundError as error:
-            return self.build_error_response(
-                error_code="ZONE_NOT_FOUND",
-                error_message=str(error),
-            )
-
-        except Exception as error:
-            return self.build_error_response(
-                error_code="SERVER_ERROR",
-                error_message=str(error),
-            )
+        return zone
 
     def resolve(self, query: DNSQuery) -> DNSResponse:
         """
@@ -133,17 +90,6 @@ class AuthoritativeServer:
             record_type=query.record_type,
             value=record["value"],
             ttl=record["ttl"],
-        )
-
-    def build_error_response(self, error_code: str, error_message: str) -> DNSResponse:
-        """
-        Build a standard DNS error response.
-        """
-        return DNSResponse(
-            message_type="response",
-            status="error",
-            error_code=error_code,
-            error_message=error_message,
         )
 
 
