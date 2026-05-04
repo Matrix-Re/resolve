@@ -2,12 +2,14 @@ import json
 from pathlib import Path
 from typing import Any
 
+from core.constants import JSON_EXTENSION
+
 
 def load_json_file(path: str | Path) -> dict[str, Any]:
     file_path = Path(path)
 
-    if file_path.suffix != ".json":
-        file_path = Path(f"{file_path}.json")
+    if file_path.suffix != JSON_EXTENSION:
+        file_path = Path(f"{file_path}{JSON_EXTENSION}")
 
     if not file_path.exists():
         raise FileNotFoundError(f"JSON file not found: {file_path}")

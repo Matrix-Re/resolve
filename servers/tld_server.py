@@ -6,11 +6,8 @@ from core.message import DNSQuery, DNSResponse
 from core.utils import extract_zone_domain
 from core.config import load_json_file
 
-
-DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 5301
-BUFFER_SIZE = 4096
-DEFAULT_TLD_CONFIG_PATH = "data/tld"
+from core.enums import RecordType, ErrorCode, MessageType, ResponseStatus
+from core.constants import DEFAULT_HOST, TLD_DEFAULT_PORT, DEFAULT_TLD_CONFIG_PATH
 
 
 class TLDServer(BaseDNSServer):
@@ -22,24 +19,11 @@ class TLDServer(BaseDNSServer):
 
     @property
     def server_name(self) -> str:
-        return "TLD"
+        return RecordType.TLD
 
     def __init__(self, host: str, port: int, config_path: str) -> None:
         super().__init__(host, port)
         self.config_path = Path(config_path)
-
-    def start(self) -> None:
-        """
-        Start the UDP TLD server.
-        """
-        self.socket.bind((self.host, self.port))
-
-        print(f"[TLD] TLD server started on {self.host}:{self.port}")
-
-        while True:
-            data, address = self.socket.recvfrom(BUFFER_SIZE)
-            response = self.handle_request(data)
-            self.socket.sendto(response.to_json().encode("utf-8"), address)
 
     def resolve(self, query: DNSQuery) -> DNSResponse:
         """
@@ -52,7 +36,7 @@ class TLDServer(BaseDNSServer):
 
         if authoritative_server is None:
             return self.build_error_response(
-                error_code="AUTHORITATIVE_NOT_FOUND",
+                error_code=ErrorCode.AUTHORITATIVE_NOT_FOUND,
                 error_message=f"No authoritative server found for domain: {zone_domain}",
             )
 
@@ -68,10 +52,10 @@ class TLDServer(BaseDNSServer):
         authoritative_server_address = f"{host}:{port}"
 
         return DNSResponse(
-            message_type="response",
-            status="ok",
+            message_type=MessageType.RESPONSE,
+            status=ResponseStatus.OK,
             domain=zone_domain,
-            record_type="AUTHORITATIVE",
+            record_type=RecordType.AUTHORITATIVE,
             value=authoritative_server_address,
             ttl=None,
         )
@@ -89,8 +73,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--port",
         type=int,
-        default=DEFAULT_PORT,
-        help=f"Server port, default: {DEFAULT_PORT}",
+        default=TLD_DEFAULT_PORT,
+        help=f"Server port, default: {TLD_DEFAULT_PORT}",
     )
 
     parser.add_argument(

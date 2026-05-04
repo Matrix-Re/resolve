@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from core.message import DNSQuery
+from core.enums import MessageType, RecordType, ResponseStatus, ErrorCode
 from servers.authoritative_server import AuthoritativeServer
 
 
@@ -68,16 +69,16 @@ def test_resolve_root_domain_a_record(
     authoritative_server: AuthoritativeServer,
 ) -> None:
     query = DNSQuery(
-        message_type="query",
+        message_type=MessageType.QUERY,
         domain="google.com",
-        record_type="A",
+        record_type=RecordType.A,
     )
 
     response = authoritative_server.resolve(query)
 
-    assert response.status == "ok"
+    assert response.status == ResponseStatus.OK
     assert response.domain == "google.com"
-    assert response.record_type == "A"
+    assert response.record_type == RecordType.A
     assert response.value == "142.250.74.68"
     assert response.ttl == 300
 
@@ -86,16 +87,16 @@ def test_resolve_sub_domain_a_record(
     authoritative_server: AuthoritativeServer,
 ) -> None:
     query = DNSQuery(
-        message_type="query",
+        message_type=MessageType.QUERY,
         domain="maps.google.com",
-        record_type="A",
+        record_type=RecordType.A,
     )
 
     response = authoritative_server.resolve(query)
 
-    assert response.status == "ok"
+    assert response.status == ResponseStatus.OK
     assert response.domain == "maps.google.com"
-    assert response.record_type == "A"
+    assert response.record_type == RecordType.A
     assert response.value == "142.250.74.100"
     assert response.ttl == 300
 
@@ -104,14 +105,14 @@ def test_resolve_nested_sub_domain(
     authoritative_server: AuthoritativeServer,
 ) -> None:
     query = DNSQuery(
-        message_type="query",
+        message_type=MessageType.QUERY,
         domain="example.maps.google.com",
-        record_type="A",
+        record_type=RecordType.A,
     )
 
     response = authoritative_server.resolve(query)
 
-    assert response.status == "ok"
+    assert response.status == ResponseStatus.OK
     assert response.domain == "example.maps.google.com"
     assert response.value == "142.250.74.101"
     assert response.ttl == 120
@@ -121,29 +122,29 @@ def test_resolve_unknown_domain_returns_not_found(
     authoritative_server: AuthoritativeServer,
 ) -> None:
     query = DNSQuery(
-        message_type="query",
+        message_type=MessageType.QUERY,
         domain="unknown.google.com",
-        record_type="A",
+        record_type=RecordType.A,
     )
 
     response = authoritative_server.resolve(query)
 
-    assert response.status == "error"
-    assert response.error_code == "NOT_FOUND"
+    assert response.status == ResponseStatus.ERROR
+    assert response.error_code == ErrorCode.NOT_FOUND
 
 
 def test_resolve_unknown_record_type_returns_record_not_found(
     authoritative_server: AuthoritativeServer,
 ) -> None:
     query = DNSQuery(
-        message_type="query",
+        message_type=MessageType.QUERY,
         domain="maps.google.com",
-        record_type="AAAA",
+        record_type=RecordType.AAAA,
     )
 
     response = authoritative_server.resolve(query)
 
-    assert response.status == "error"
+    assert response.status == ResponseStatus.ERROR
     assert response.error_code == "RECORD_NOT_FOUND"
 
 

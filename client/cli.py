@@ -4,14 +4,18 @@ import socket
 from typing import Dict, Any
 
 
-DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 5300
-TIMEOUT = 3
+from core.constants import (
+    DEFAULT_HOST,
+    RESOLVER_DEFAULT_PORT,
+    DEFAULT_TIMEOUT,
+    BUFFER_SIZE,
+)
+from core.enums import MessageType, RecordType, ResponseStatus
 
 
 def build_query(domain: str, record_type: str) -> Dict[str, Any]:
     return {
-        "message_type": "query",
+        "message_type": MessageType.QUERY,
         "domain": domain,
         "record_type": record_type,
     }
@@ -19,13 +23,13 @@ def build_query(domain: str, record_type: str) -> Dict[str, Any]:
 
 def send_query(query: Dict[str, Any], host: str, port: int) -> Dict[str, Any]:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.settimeout(TIMEOUT)
+    sock.settimeout(DEFAULT_TIMEOUT)
 
     try:
         payload = json.dumps(query).encode("utf-8")
         sock.sendto(payload, (host, port))
 
-        data, _ = sock.recvfrom(4096)
+        data, _ = sock.recvfrom(BUFFER_SIZE)
         return json.loads(data.decode("utf-8"))
 
     except socket.timeout:
@@ -43,7 +47,7 @@ def display_response(response: Dict[str, Any]) -> None:
 
     status = response.get("status")
 
-    if status == "ok":
+    if status == ResponseStatus.OK:
         print(f"Domain       : {response.get('domain')}")
         print(f"Record type  : {response.get('record_type')}")
         print(f"Value        : {response.get('value')}")
@@ -67,9 +71,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--type",
         dest="record_type",
-        default="A",
-        choices=["A", "AAAA"],
-        help="DNS record type (default: A)",
+        default=RecordType.A,
+        choices=[RecordType.A, RecordType.AAAA],
+        help=f"DNS record type (default: {RecordType.A})",
     )
 
     parser.add_argument(
@@ -81,8 +85,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--port",
         type=int,
-        default=DEFAULT_PORT,
-        help=f"DNS server port (default: {DEFAULT_PORT})",
+        default=RESOLVER_DEFAULT_PORT,
+        help=f"DNS server port (default: {RESOLVER_DEFAULT_PORT})",
     )
 
     return parser.parse_args()

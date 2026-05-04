@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from core.message import DNSQuery
+from core.enums import MessageType, RecordType, ResponseStatus, ErrorCode
 from servers.tld_server import TLDServer
 from core.config import load_json_file
 
@@ -45,16 +46,16 @@ def test_resolve_domain_returns_authoritative_server(
     tld_server: TLDServer,
 ) -> None:
     query = DNSQuery(
-        message_type="query",
+        message_type=MessageType.QUERY,
         domain="google.com",
-        record_type="A",
+        record_type=RecordType.A,
     )
 
     response = tld_server.resolve(query)
 
-    assert response.status == "ok"
+    assert response.status == ResponseStatus.OK
     assert response.domain == "google.com"
-    assert response.record_type == "AUTHORITATIVE"
+    assert response.record_type == RecordType.AUTHORITATIVE
     assert response.value == "127.0.0.1:5302"
 
 
@@ -62,16 +63,16 @@ def test_resolve_sub_domain_returns_authoritative_server(
     tld_server: TLDServer,
 ) -> None:
     query = DNSQuery(
-        message_type="query",
+        message_type=MessageType.QUERY,
         domain="maps.google.com",
-        record_type="A",
+        record_type=RecordType.A,
     )
 
     response = tld_server.resolve(query)
 
-    assert response.status == "ok"
+    assert response.status == ResponseStatus.OK
     assert response.domain == "google.com"
-    assert response.record_type == "AUTHORITATIVE"
+    assert response.record_type == RecordType.AUTHORITATIVE
     assert response.value == "127.0.0.1:5302"
 
 
@@ -79,14 +80,14 @@ def test_resolve_nested_sub_domain_returns_authoritative_server(
     tld_server: TLDServer,
 ) -> None:
     query = DNSQuery(
-        message_type="query",
+        message_type=MessageType.QUERY,
         domain="example.maps.google.com",
-        record_type="A",
+        record_type=RecordType.A,
     )
 
     response = tld_server.resolve(query)
 
-    assert response.status == "ok"
+    assert response.status == ResponseStatus.OK
     assert response.domain == "google.com"
     assert response.value == "127.0.0.1:5302"
 
@@ -95,15 +96,15 @@ def test_resolve_unknown_domain_returns_error(
     tld_server: TLDServer,
 ) -> None:
     query = DNSQuery(
-        message_type="query",
+        message_type=MessageType.QUERY,
         domain="facebook.com",
-        record_type="A",
+        record_type=RecordType.A,
     )
 
     response = tld_server.resolve(query)
 
-    assert response.status == "error"
-    assert response.error_code == "AUTHORITATIVE_NOT_FOUND"
+    assert response.status == ResponseStatus.ERROR
+    assert response.error_code == ErrorCode.AUTHORITATIVE_NOT_FOUND
 
 
 def test_load_missing_config_raises_file_not_found(tmp_path: Path) -> None:
@@ -139,8 +140,8 @@ def test_handle_request_with_invalid_json_returns_error(
 ) -> None:
     response = tld_server.handle_request(b"{invalid-json")
 
-    assert response.status == "error"
-    assert response.error_code == "INVALID_JSON"
+    assert response.status == ResponseStatus.ERROR
+    assert response.error_code == ErrorCode.INVALID_JSON
 
 
 def test_handle_request_with_missing_field_returns_error(
@@ -148,12 +149,12 @@ def test_handle_request_with_missing_field_returns_error(
 ) -> None:
     payload = json.dumps(
         {
-            "message_type": "query",
+            "message_type": MessageType.QUERY,
             "domain": "google.com",
         }
     ).encode("utf-8")
 
     response = tld_server.handle_request(payload)
 
-    assert response.status == "error"
-    assert response.error_code == "INVALID_REQUEST"
+    assert response.status == ResponseStatus.ERROR
+    assert response.error_code == ErrorCode.INVALID_REQUEST

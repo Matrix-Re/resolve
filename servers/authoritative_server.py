@@ -8,10 +8,8 @@ from core.utils import extract_zone_domain
 from core.config import load_json_file
 
 
-DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 5302
-BUFFER_SIZE = 4096
-DEFAULT_ZONE_PATH = "data/zones/"
+from core.constants import DEFAULT_HOST, AUTHORITATIVE_DEFAULT_PORT, DEFAULT_ZONES_DIR
+from core.enums import RecordType, ErrorCode, MessageType, ResponseStatus
 
 
 class AuthoritativeServer(BaseDNSServer):
@@ -23,30 +21,17 @@ class AuthoritativeServer(BaseDNSServer):
 
     @property
     def server_name(self) -> str:
-        return "AUTH"
+        return RecordType.AUTHORITATIVE
 
     def __init__(self, host: str, port: int, zone_path: str) -> None:
         super().__init__(host, port)
         self.zone_path = Path(zone_path)
 
-    def start(self) -> None:
-        """
-        Start the UDP authoritative server.
-        """
-        self.socket.bind((self.host, self.port))
-
-        print(f"[AUTH] Authoritative server started on {self.host}:{self.port} ")
-
-        while True:
-            data, address = self.socket.recvfrom(BUFFER_SIZE)
-            response = self.handle_request(data)
-            self.socket.sendto(response.to_json().encode("utf-8"), address)
-
     def load_zone(self, zone_name: str) -> dict[str, Any]:
         """
         Load a DNS zone from a JSON file.
         """
-        zone = load_json_file(f"{self.zone_path}/{zone_name}")
+        zone = load_json_file(self.zone_path / zone_name)
 
         if "domain" not in zone:
             raise ValueError("Invalid zone file: missing 'domain' field")
@@ -68,7 +53,7 @@ class AuthoritativeServer(BaseDNSServer):
 
         if domain_records is None:
             return self.build_error_response(
-                error_code="NOT_FOUND",
+                error_code=ErrorCode.NOT_FOUND,
                 error_message=f"Domain not found in zone: {query.domain}",
             )
 
@@ -76,7 +61,7 @@ class AuthoritativeServer(BaseDNSServer):
 
         if record is None:
             return self.build_error_response(
-                error_code="RECORD_NOT_FOUND",
+                error_code=ErrorCode.RECORD_NOT_FOUND,
                 error_message=(
                     f"Record type {query.record_type} not found "
                     f"for domain {query.domain}"
@@ -84,8 +69,8 @@ class AuthoritativeServer(BaseDNSServer):
             )
 
         return DNSResponse(
-            message_type="response",
-            status="ok",
+            message_type=MessageType.RESPONSE,
+            status=ResponseStatus.OK,
             domain=query.domain,
             record_type=query.record_type,
             value=record["value"],
@@ -105,14 +90,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--port",
         type=int,
-        default=DEFAULT_PORT,
-        help=f"Server port, default: {DEFAULT_PORT}",
+        default=AUTHORITATIVE_DEFAULT_PORT,
+        help=f"Server port, default: {AUTHORITATIVE_DEFAULT_PORT}",
     )
 
     parser.add_argument(
         "--zones-path",
-        default=DEFAULT_ZONE_PATH,
-        help=f"Path to the DNS zones directory, default: {DEFAULT_ZONE_PATH}",
+        default=DEFAULT_ZONES_DIR,
+        help=f"Path to the DNS zones directory, default: {DEFAULT_ZONES_DIR}",
     )
 
     return parser.parse_args()

@@ -3,9 +3,8 @@ import socket
 from abc import ABC, abstractmethod
 
 from core.message import DNSQuery, DNSResponse
-
-
-BUFFER_SIZE = 4096
+from core.enums import ErrorCode, MessageType, ResponseStatus
+from core.constants import BUFFER_SIZE
 
 
 class BaseDNSServer(ABC):
@@ -15,6 +14,9 @@ class BaseDNSServer(ABC):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def start(self) -> None:
+        """
+        Start the UDP authoritative server.
+        """
         self.socket.bind((self.host, self.port))
         print(f"[{self.server_name}] Server started on {self.host}:{self.port}")
 
@@ -35,37 +37,37 @@ class BaseDNSServer(ABC):
 
         except json.JSONDecodeError:
             return self.build_error_response(
-                "INVALID_JSON",
+                ErrorCode.INVALID_JSON,
                 "Request payload is not valid JSON",
             )
 
         except KeyError as error:
             return self.build_error_response(
-                "INVALID_REQUEST",
+                ErrorCode.INVALID_REQUEST,
                 f"Missing field: {error.args[0]}",
             )
 
         except UnicodeDecodeError:
             return self.build_error_response(
-                "INVALID_ENCODING",
+                ErrorCode.INVALID_ENCODING,
                 "Request payload must be UTF-8 encoded",
             )
 
         except FileNotFoundError as error:
             return self.build_error_response(
-                "CONFIG_NOT_FOUND",
+                ErrorCode.CONFIG_NOT_FOUND,
                 str(error),
             )
 
         except ValueError as error:
             return self.build_error_response(
-                "INVALID_CONFIG",
+                ErrorCode.INVALID_CONFIG,
                 str(error),
             )
 
         except Exception as error:
             return self.build_error_response(
-                "SERVER_ERROR",
+                ErrorCode.SERVER_ERROR,
                 str(error),
             )
 
@@ -74,8 +76,8 @@ class BaseDNSServer(ABC):
         Build a standard DNS error response.
         """
         return DNSResponse(
-            message_type="response",
-            status="error",
+            message_type=MessageType.RESPONSE,
+            status=ResponseStatus.ERROR,
             error_code=error_code,
             error_message=error_message,
         )
