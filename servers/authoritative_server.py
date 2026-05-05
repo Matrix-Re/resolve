@@ -6,9 +6,10 @@ from core.server import BaseDNSServer
 from core.message import DNSQuery, DNSResponse
 from core.utils import extract_zone_domain
 from core.config import load_json_file
+from core.cli import add_common_server_args, add_zone_server_args
 
 
-from core.constants import DEFAULT_HOST, AUTHORITATIVE_DEFAULT_PORT, DEFAULT_ZONES_DIR
+from core.constants import AUTHORITATIVE_DEFAULT_PORT
 from core.enums import RecordType, ErrorCode, MessageType, ResponseStatus
 
 
@@ -81,24 +82,8 @@ class AuthoritativeServer(BaseDNSServer):
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Authoritative DNS server for ReSolve")
 
-    parser.add_argument(
-        "--host",
-        default=DEFAULT_HOST,
-        help=f"Server host, default: {DEFAULT_HOST}",
-    )
-
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=AUTHORITATIVE_DEFAULT_PORT,
-        help=f"Server port, default: {AUTHORITATIVE_DEFAULT_PORT}",
-    )
-
-    parser.add_argument(
-        "--zones-path",
-        default=DEFAULT_ZONES_DIR,
-        help=f"Path to the DNS zones directory, default: {DEFAULT_ZONES_DIR}",
-    )
+    add_common_server_args(parser, AUTHORITATIVE_DEFAULT_PORT)
+    add_zone_server_args(parser)
 
     return parser.parse_args()
 
