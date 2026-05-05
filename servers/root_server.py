@@ -5,7 +5,7 @@ from core.utils import extract_domain_suffix
 from core.cli import add_common_server_args, add_config_server_args
 
 from core.enums import RecordType, ErrorCode
-from core.constants import ROOT_DEFAULT_PORT
+from core.constants import ROOT_DEFAULT_PORT, DEFAULT_ROOT_CONFIG_PATH
 
 
 class RootServer(ReferralDNSServer):
@@ -36,7 +36,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Root DNS server for ReSolve")
 
     add_common_server_args(parser, ROOT_DEFAULT_PORT)
-    add_config_server_args(parser)
+    add_config_server_args(parser, DEFAULT_ROOT_CONFIG_PATH)
 
     return parser.parse_args()
 

@@ -5,7 +5,7 @@ from core.utils import extract_zone_domain
 from core.cli import add_common_server_args, add_config_server_args
 
 from core.enums import RecordType, ErrorCode
-from core.constants import TLD_DEFAULT_PORT
+from core.constants import TLD_DEFAULT_PORT, DEFAULT_TLD_CONFIG_PATH
 
 
 class TLDServer(ReferralDNSServer):
@@ -36,7 +36,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="TLD DNS server for ReSolve")
 
     add_common_server_args(parser, TLD_DEFAULT_PORT)
-    add_config_server_args(parser)
+    add_config_server_args(parser, DEFAULT_TLD_CONFIG_PATH)
 
     return parser.parse_args()
 
