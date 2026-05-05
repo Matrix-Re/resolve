@@ -15,6 +15,7 @@ class RecordType(StrEnum):
     A = "A"
     AAAA = "AAAA"
     TLD = "TLD"
+    ROOT = "ROOT"
     AUTHORITATIVE = "AUTHORITATIVE"
 
 
