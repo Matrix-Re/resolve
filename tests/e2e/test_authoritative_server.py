@@ -5,7 +5,13 @@ import pytest
 
 from core.message import DNSQuery
 from core.enums import MessageType, RecordType, ResponseStatus, ErrorCode
-from servers.authoritative_server import AuthoritativeServer
+from core.constants import (
+    DEFAULT_HOST,
+    DEFAULT_ZONES_DIR,
+    TLD_DEFAULT_PORT,
+    AUTHORITATIVE_DEFAULT_PORT,
+)
+from servers.authoritative_server import AuthoritativeServer, parse_args
 
 
 def create_zone_file(zones_path: Path) -> None:
@@ -51,8 +57,8 @@ def authoritative_server(tmp_path: Path) -> AuthoritativeServer:
     create_zone_file(zones_path)
 
     return AuthoritativeServer(
-        host="127.0.0.1",
-        port=5302,
+        host=DEFAULT_HOST,
+        port=TLD_DEFAULT_PORT,
         zone_path=str(zones_path),
     )
 
@@ -145,7 +151,7 @@ def test_resolve_unknown_record_type_returns_record_not_found(
     response = authoritative_server.resolve(query)
 
     assert response.status == ResponseStatus.ERROR
-    assert response.error_code == "RECORD_NOT_FOUND"
+    assert response.error_code == ErrorCode.RECORD_NOT_FOUND
 
 
 def test_load_unknown_zone_raises_file_not_found(
@@ -153,3 +159,92 @@ def test_load_unknown_zone_raises_file_not_found(
 ) -> None:
     with pytest.raises(FileNotFoundError):
         authoritative_server.load_zone("facebook.com")
+
+
+def test_load_zone_without_domain_field_raises_value_error(tmp_path: Path) -> None:
+    zones_path = tmp_path / "zones"
+    zones_path.mkdir(parents=True, exist_ok=True)
+
+    invalid_zone = {
+        "records": {
+            "google.com": {
+                "A": {
+                    "value": "142.250.74.68",
+                    "ttl": 300,
+                }
+            }
+        }
+    }
+
+    (zones_path / "google.com.json").write_text(
+        json.dumps(invalid_zone),
+        encoding="utf-8",
+    )
+
+    server = AuthoritativeServer(
+        host=DEFAULT_HOST,
+        port=TLD_DEFAULT_PORT,
+        zone_path=str(zones_path),
+    )
+
+    with pytest.raises(ValueError, match="missing 'domain' field"):
+        server.load_zone("google.com")
+
+
+def test_load_zone_without_records_field_raises_value_error(tmp_path: Path) -> None:
+    zones_path = tmp_path / "zones"
+    zones_path.mkdir(parents=True, exist_ok=True)
+
+    invalid_zone = {
+        "domain": "google.com",
+    }
+
+    (zones_path / "google.com.json").write_text(
+        json.dumps(invalid_zone),
+        encoding="utf-8",
+    )
+
+    server = AuthoritativeServer(
+        host=DEFAULT_HOST,
+        port=TLD_DEFAULT_PORT,
+        zone_path=str(zones_path),
+    )
+
+    with pytest.raises(ValueError, match="missing 'records' field"):
+        server.load_zone("google.com")
+
+
+def test_parse_args_with_default_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "authoritative_server.py",
+        ],
+    )
+
+    args = parse_args()
+
+    assert args.host == DEFAULT_HOST
+    assert args.port == AUTHORITATIVE_DEFAULT_PORT
+    assert args.zones_path == DEFAULT_ZONES_DIR
+
+
+def test_parse_args_with_custom_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "authoritative_server.py",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "5402",
+            "--zones-path",
+            "custom/zones",
+        ],
+    )
+
+    args = parse_args()
+
+    assert args.host == "0.0.0.0"
+    assert args.port == 5402
+    assert args.zones_path == "custom/zones"

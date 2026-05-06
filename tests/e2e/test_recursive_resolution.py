@@ -4,10 +4,14 @@ import threading
 import time
 from pathlib import Path
 
+from core.enums import ResponseStatus, RecordType, MessageType
+
 from resolver.recursive_resolver import RecursiveResolver
 from servers.authoritative_server import AuthoritativeServer
 from servers.root_server import RootServer
 from servers.tld_server import TLDServer
+
+from core.constants import BUFFER_SIZE, DEFAULT_HOST
 
 
 def write_json(path: Path, content: dict) -> None:
@@ -28,7 +32,7 @@ def test_recursive_resolution_e2e(tmp_path: Path) -> None:
         root_config,
         {
             ".com": {
-                "host": "127.0.0.1",
+                "host": DEFAULT_HOST,
                 "port": 5401,
             }
         },
@@ -38,7 +42,7 @@ def test_recursive_resolution_e2e(tmp_path: Path) -> None:
         tld_config,
         {
             "google.com": {
-                "host": "127.0.0.1",
+                "host": DEFAULT_HOST,
                 "port": 5402,
             }
         },
@@ -60,27 +64,27 @@ def test_recursive_resolution_e2e(tmp_path: Path) -> None:
     )
 
     root_server = RootServer(
-        host="127.0.0.1",
+        host=DEFAULT_HOST,
         port=5403,
         config_path=str(root_config),
     )
 
     tld_server = TLDServer(
-        host="127.0.0.1",
+        host=DEFAULT_HOST,
         port=5401,
         config_path=str(tld_config),
     )
 
     authoritative_server = AuthoritativeServer(
-        host="127.0.0.1",
+        host=DEFAULT_HOST,
         port=5402,
         zone_path=str(zones_path),
     )
 
     resolver = RecursiveResolver(
-        host="127.0.0.1",
+        host=DEFAULT_HOST,
         port=5400,
-        root_host="127.0.0.1",
+        root_host=DEFAULT_HOST,
         root_port=5403,
         timeout=2,
     )
@@ -92,23 +96,23 @@ def test_recursive_resolution_e2e(tmp_path: Path) -> None:
     time.sleep(0.5)
 
     query = {
-        "message_type": "query",
+        "message_type": MessageType.QUERY,
         "domain": "maps.google.com",
-        "record_type": "A",
+        "record_type": RecordType.A,
     }
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(3)
 
     try:
-        sock.sendto(json.dumps(query).encode("utf-8"), ("127.0.0.1", 5400))
-        data, _ = sock.recvfrom(4096)
+        sock.sendto(json.dumps(query).encode("utf-8"), (DEFAULT_HOST, 5400))
+        data, _ = sock.recvfrom(BUFFER_SIZE)
         response = json.loads(data.decode("utf-8"))
     finally:
         sock.close()
 
-    assert response["status"] == "ok"
+    assert response["status"] == ResponseStatus.OK
     assert response["domain"] == "maps.google.com"
-    assert response["record_type"] == "A"
+    assert response["record_type"] == RecordType.A
     assert response["value"] == "142.250.74.100"
     assert response["ttl"] == 300

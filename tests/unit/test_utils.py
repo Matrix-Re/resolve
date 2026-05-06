@@ -25,6 +25,13 @@ def test_extract_zone_domain(
 
 
 @pytest.mark.parametrize(
+    "extract_function",
+    [
+        extract_zone_domain,
+        extract_domain_suffix,
+    ],
+)
+@pytest.mark.parametrize(
     "invalid_domain",
     [
         "",
@@ -34,7 +41,9 @@ def test_extract_zone_domain(
         "   ",
     ],
 )
-def test_extract_zone_domain_with_invalid_domain(invalid_domain: str) -> None:
+def test_extract_domain_functions_with_invalid_domain(
+    extract_function,
+    invalid_domain: str,
+) -> None:
     with pytest.raises(ValueError):
-        extract_zone_domain(invalid_domain)
-        extract_domain_suffix(invalid_domain)
+        extract_function(invalid_domain)

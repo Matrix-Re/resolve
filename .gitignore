@@ -10,3 +10,7 @@ __pycache__/
 
 # Cache
 .ruff_cache/
+
+# Tests
+.coverage
+htmlcov/
