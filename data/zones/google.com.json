@@ -1,0 +1,12 @@
+{
+  "domain": "google.com",
+  "records": {
+    "google.com": {
+      "A": { "value": "8.8.8.8", "ttl": 300 },
+      "AAAA": { "value": "2001:4860:4860::8888", "ttl": 300 }
+    },
+    "maps.google.com": {
+      "A": { "value": "172.217.171.110", "ttl": 300 }
+    }
+  }
+}

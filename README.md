@@ -9,6 +9,8 @@ Projet pédagogique de simulation d’un système DNS distribué en Python.
 - implémenter des serveurs root, TLD et autoritaires
 - gérer un cache avec TTL
 - tester le fonctionnement avec pytest
+- Mettre en place une pipeline CI avec tests
+- Documenter les choix techniques et l’architecture du projet.
 
 ## Installation
 
@@ -23,29 +25,48 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-## Lisibilité du code
-Utiliser la commande ruff pour formatter le code et le rendre plus lisible
+## Lancer la chaîne DNS complète
+
+Ouvrir plusieurs terminaux.
+
+### 1. Lancer le serveur autoritaire
+```bash
+python -m servers.authoritative_server
+```
+### 2. Lancer le serveur TLD
+```bash
+python -m servers.tld_server
+```
+### 3. Lancer le serveur Root
+```bash
+python -m servers.root_server
+```
+### 4. Lancer le résolveur récursif
+```bash
+python -m resolver.recursive_resolver
+```
+### 5. Envoyer une requête DNS avec le client CLI
+```bash
+python -m client.cli maps.google.com --type A --host 127.0.0.1 --port 5300
+```
+
+## Côté dev
+
+### Lisibilité du code
+Utiliser Ruff pour vérifier et formater le code.
 ```bash
 ruff check .
 ruff format .
 ```
 
-## Lancer le server minimaliste
-```bash
-python -m servers.server
-```
-
-## Lancer une requete DNS
-```bash
-python -m client.cli {domain} --type {type} --host 127.0.0.1 --port 5300
-```
-
-ex :
-```bash
-python -m client.cli google.com --type A --host 127.0.0.1 --port 5300
-```
-
-## Lancement les tests
+### Lancer les tests
 ```bash
 pytest
+```
+
+### Couverture de tests
+
+Lancer les tests avec couverture :
+```bash
+pytest --cov=. --cov-report=term-missing
 ```
