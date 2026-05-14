@@ -70,3 +70,8 @@ Lancer les tests avec couverture :
 ```bash
 pytest --cov=. --cov-report=term-missing
 ```
+
+Lancer les tests avec rapport html :
+```bash
+pytest --cov=. --cov-report=html
+```
