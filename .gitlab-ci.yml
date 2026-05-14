@@ -36,3 +36,9 @@ tests:
     paths:
       - report.xml
       - coverage.xml
+  rules:
+    - changes:
+        - "**/*.py"
+        - "requirements.txt"
+        - ".gitlab-ci.yml"
+    - when: never
