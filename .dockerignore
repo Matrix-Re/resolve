@@ -1,0 +1,14 @@
+.git/
+.pytest_cache/
+.ruff_cache/
+.venv/
+.vscode/
+__pycache__/
+docs/
+htmlcov/
+tests/
+.coverage
+.coveragerc
+.gitignore
+.gitlab-ci.yml
+README.md
