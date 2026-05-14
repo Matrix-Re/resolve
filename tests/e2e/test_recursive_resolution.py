@@ -27,6 +27,7 @@ def test_recursive_resolution_e2e(tmp_path: Path) -> None:
     root_config = tmp_path / "root.json"
     tld_config = tmp_path / "tld.json"
     zones_path = tmp_path / "zones"
+    google_zone = "google.com.json"
 
     write_json(
         root_config,
@@ -49,7 +50,7 @@ def test_recursive_resolution_e2e(tmp_path: Path) -> None:
     )
 
     write_json(
-        zones_path / "google.com.json",
+        zones_path / google_zone,
         {
             "domain": "google.com",
             "records": {
@@ -101,18 +102,34 @@ def test_recursive_resolution_e2e(tmp_path: Path) -> None:
         "record_type": RecordType.A,
     }
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.settimeout(3)
+    def send_dns_query() -> dict:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(3)
 
-    try:
-        sock.sendto(json.dumps(query).encode("utf-8"), (DEFAULT_HOST, 5400))
-        data, _ = sock.recvfrom(BUFFER_SIZE)
-        response = json.loads(data.decode("utf-8"))
-    finally:
-        sock.close()
+        try:
+            sock.sendto(json.dumps(query).encode("utf-8"), (DEFAULT_HOST, 5400))
+            data, _ = sock.recvfrom(BUFFER_SIZE)
+            return json.loads(data.decode("utf-8"))
+        finally:
+            sock.close()
 
-    assert response["status"] == ResponseStatus.OK
-    assert response["domain"] == "maps.google.com"
-    assert response["record_type"] == RecordType.A
-    assert response["value"] == "142.250.74.100"
-    assert response["ttl"] == 300
+    first_response = send_dns_query()
+
+    assert first_response["status"] == ResponseStatus.OK
+    assert first_response["domain"] == "maps.google.com"
+    assert first_response["record_type"] == RecordType.A
+    assert first_response["value"] == "142.250.74.100"
+    assert first_response["ttl"] == 300
+
+    # Delete the current zone et make an other request with de same domain that the previous request
+    # the resolver should return the value from the cache
+    zone_file = zones_path / google_zone
+    zone_file.unlink()
+
+    seconde_response = send_dns_query()
+
+    assert seconde_response["status"] == ResponseStatus.OK
+    assert seconde_response["domain"] == "maps.google.com"
+    assert seconde_response["record_type"] == RecordType.A
+    assert seconde_response["value"] == "142.250.74.100"
+    assert seconde_response["ttl"] == 300

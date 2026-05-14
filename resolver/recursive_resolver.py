@@ -1,6 +1,8 @@
 import argparse
 import json
 import socket
+import threading
+import time
 
 from core.cli import add_common_server_args
 from core.constants import (
@@ -14,6 +16,7 @@ from core.enums import ErrorCode, MessageType, ResponseStatus
 from core.message import DNSQuery, DNSResponse
 from core.network import parse_server_address
 from core.server import BaseDNSServer
+from core.cache import DNSCache
 
 
 class RecursiveResolver(BaseDNSServer):
@@ -41,11 +44,17 @@ class RecursiveResolver(BaseDNSServer):
         self.root_host = root_host
         self.root_port = root_port
         self.timeout = timeout
+        self.cache = DNSCache()
 
     def resolve(self, query: DNSQuery) -> DNSResponse:
         """
         Resolve a DNS query by contacting Root, TLD and Authoritative servers.
         """
+        cached_response = self.cache.get(query)
+
+        if cached_response is not None:
+            return cached_response
+
         root_response = self.query_server(
             query=query,
             host=self.root_host,
@@ -73,6 +82,9 @@ class RecursiveResolver(BaseDNSServer):
             host=auth_host,
             port=auth_port,
         )
+
+        if authoritative_response.status == ResponseStatus.OK:
+            self.cache.set(query, authoritative_response)
 
         return authoritative_response
 
@@ -130,6 +142,19 @@ class RecursiveResolver(BaseDNSServer):
             error_message=data.get("error_message"),
         )
 
+    def start_cache_display(self, refresh_interval: int = 1) -> None:
+        """
+        Start a background thread that continuously displays the cache content.
+        """
+
+        def display_loop() -> None:
+            while True:
+                self.cache.display()
+                time.sleep(refresh_interval)
+
+        thread = threading.Thread(target=display_loop, daemon=True)
+        thread.start()
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Recursive DNS resolver for ReSolve")
@@ -162,6 +187,7 @@ def main() -> None:
         root_port=args.root_port,
     )
 
+    resolver.start_cache_display()
     resolver.start()
 
 
