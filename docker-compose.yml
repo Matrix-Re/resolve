@@ -27,9 +27,9 @@ services:
     depends_on:
       - authoritative
 
-  root:
+  root-1:
     build: .
-    container_name: resolve-root
+    container_name: resolve-root-1
     command: >
       python -m servers.root_server
       --host 0.0.0.0
@@ -42,6 +42,21 @@ services:
     depends_on:
       - tld
 
+  root-2:
+    build: .
+    container_name: resolve-root-2
+    command: >
+      python -m servers.root_server
+      --host 0.0.0.0
+      --port 5311
+      --config data/docker/root.json
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "5311:5311/udp"
+    depends_on:
+      - tld
+
   resolver:
     build: .
     container_name: resolve-resolver
@@ -51,7 +66,10 @@ services:
       --port 5300
       --root-host root
       --root-port 5301
+      --root 127.0.0.1:5301
+      --root 127.0.0.1:5311
     ports:
       - "5300:5300/udp"
     depends_on:
-      - root
+      - root-1
+      - root-2

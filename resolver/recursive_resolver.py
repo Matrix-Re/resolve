@@ -38,11 +38,13 @@ class RecursiveResolver(BaseDNSServer):
         port: int,
         root_host: str,
         root_port: int,
+        roots: list[tuple[str, int]] | None = None,
         timeout: int = DEFAULT_TIMEOUT,
     ) -> None:
         super().__init__(host, port)
         self.root_host = root_host
         self.root_port = root_port
+        self.roots = roots or [(root_host, root_port)]
         self.timeout = timeout
         self.cache = DNSCache()
 
@@ -55,11 +57,7 @@ class RecursiveResolver(BaseDNSServer):
         if cached_response is not None:
             return cached_response
 
-        root_response = self.query_server(
-            query=query,
-            host=self.root_host,
-            port=self.root_port,
-        )
+        root_response = self.query_root_servers(query)
 
         if root_response.status != ResponseStatus.OK:
             return root_response
@@ -109,14 +107,55 @@ class RecursiveResolver(BaseDNSServer):
                 error_message=f"Timeout while contacting server {host}:{port}",
             )
 
+        except socket.gaierror as error:
+            return self.build_error_response(
+                error_code=ErrorCode.SERVER_ERROR,
+                error_message=f"Unable to resolve server host {host}:{port}: {error}",
+            )
+
         except json.JSONDecodeError:
             return self.build_error_response(
                 error_code=ErrorCode.INVALID_JSON,
                 error_message=f"Invalid JSON response from server {host}:{port}",
             )
 
+        except OSError as error:
+            return self.build_error_response(
+                error_code=ErrorCode.SERVER_ERROR,
+                error_message=f"Network error while contacting server {host}:{port}: {error}",
+            )
+
         finally:
             sock.close()
+
+    def query_root_servers(self, query: DNSQuery) -> DNSResponse:
+        """
+        Try each configured Root server until one returns a valid response.
+        """
+        last_error: DNSResponse | None = None
+
+        for root_host, root_port in self.roots:
+            root_response = self.query_server(
+                query=query,
+                host=root_host,
+                port=root_port,
+            )
+
+            if root_response.status == ResponseStatus.OK:
+                return root_response
+
+            last_error = root_response
+
+        if last_error is not None:
+            return self.build_error_response(
+                error_code=ErrorCode.SERVER_ERROR,
+                error_message="All Root servers are unavailable",
+            )
+
+        return self.build_error_response(
+            error_code=ErrorCode.SERVER_ERROR,
+            error_message="No Root server configured",
+        )
 
     def extract_next_server(self, response: DNSResponse) -> tuple[str, int]:
         """
@@ -174,17 +213,44 @@ def parse_args() -> argparse.Namespace:
         help=f"Root server port, default: {ROOT_DEFAULT_PORT}",
     )
 
+    parser.add_argument(
+        "--root",
+        action="append",
+        default=None,
+        help=(
+            "Root server address. Can be used multiple times. "
+            "Example: --root 127.0.0.1:5301 --root 127.0.0.1:5311"
+        ),
+    )
+
     return parser.parse_args()
+
+
+def parse_roots(raw_roots: list[str]) -> list[tuple[str, int]]:
+    """
+    Parse Root server addresses.
+
+    Example:
+    ["127.0.0.1:5301", "127.0.0.1:5311"]
+    -> [("127.0.0.1", 5301), ("127.0.0.1", 5311)]
+    """
+    return [parse_server_address(root) for root in raw_roots]
 
 
 def main() -> None:
     args = parse_args()
+
+    roots = None
+
+    if args.root is not None:
+        roots = parse_roots(args.root)
 
     resolver = RecursiveResolver(
         host=args.host,
         port=args.port,
         root_host=args.root_host,
         root_port=args.root_port,
+        roots=roots,
     )
 
     resolver.start_cache_display()

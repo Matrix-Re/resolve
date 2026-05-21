@@ -110,7 +110,7 @@ def test_resolver_stops_if_root_returns_error(monkeypatch) -> None:
 
     assert calls == [(DEFAULT_HOST, ROOT_DEFAULT_PORT)]
     assert response.status == ResponseStatus.ERROR
-    assert response.error_code == ErrorCode.TLD_NOT_FOUND
+    assert response.error_code == ErrorCode.SERVER_ERROR
 
 
 def test_resolver_stops_if_tld_returns_error(monkeypatch) -> None:
@@ -325,3 +325,119 @@ def test_parse_args_with_custom_values(monkeypatch: pytest.MonkeyPatch) -> None:
     assert args.port == 5400
     assert args.root_host == DEFAULT_HOST
     assert args.root_port == 5403
+
+# -------------------
+# ROOT FALLBACK TESTS
+# -------------------
+
+def test_query_root_servers_fallback_to_second_root(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first_root_port = 5301
+    second_root_port = 5311
+
+    resolver = RecursiveResolver(
+        host=DEFAULT_HOST,
+        port=RESOLVER_DEFAULT_PORT,
+        root_host=DEFAULT_HOST,
+        root_port=first_root_port,
+        roots=[
+            (DEFAULT_HOST, first_root_port),
+            (DEFAULT_HOST, second_root_port),
+        ],
+        timeout=1,
+    )
+
+    query = DNSQuery(
+        message_type=MessageType.QUERY,
+        domain="maps.google.com",
+        record_type=RecordType.A,
+    )
+
+    calls = []
+
+    def fake_query_server(query: DNSQuery, host: str, port: int) -> DNSResponse:
+        calls.append((host, port))
+
+        if port == first_root_port:
+            return DNSResponse(
+                message_type=MessageType.RESPONSE,
+                status=ResponseStatus.ERROR,
+                error_code=ErrorCode.SERVER_ERROR,
+                error_message="Root server unavailable",
+            )
+
+        if port == second_root_port:
+            return DNSResponse(
+                message_type=MessageType.RESPONSE,
+                status=ResponseStatus.OK,
+                domain=".com",
+                record_type=RecordType.TLD,
+                value=f"{DEFAULT_HOST}:{TLD_DEFAULT_PORT}",
+            )
+
+        raise AssertionError(f"Unexpected root server call: {host}:{port}")
+
+    monkeypatch.setattr(resolver, "query_server", fake_query_server)
+
+    response = resolver.query_root_servers(query)
+
+    assert calls == [
+        (DEFAULT_HOST, first_root_port),
+        (DEFAULT_HOST, second_root_port),
+    ]
+
+    assert response.status == ResponseStatus.OK
+    assert response.domain == ".com"
+    assert response.record_type == RecordType.TLD
+    assert response.value == f"{DEFAULT_HOST}:{TLD_DEFAULT_PORT}"
+
+
+def test_query_root_servers_returns_error_when_all_roots_fail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first_root_port = 5301
+    second_root_port = 5311
+
+    resolver = RecursiveResolver(
+        host=DEFAULT_HOST,
+        port=RESOLVER_DEFAULT_PORT,
+        root_host=DEFAULT_HOST,
+        root_port=first_root_port,
+        roots=[
+            (DEFAULT_HOST, first_root_port),
+            (DEFAULT_HOST, second_root_port),
+        ],
+        timeout=1,
+    )
+
+    query = DNSQuery(
+        message_type=MessageType.QUERY,
+        domain="maps.google.com",
+        record_type=RecordType.A,
+    )
+
+    calls = []
+
+    def fake_query_server(query: DNSQuery, host: str, port: int) -> DNSResponse:
+        calls.append((host, port))
+
+        return DNSResponse(
+            message_type=MessageType.RESPONSE,
+            status=ResponseStatus.ERROR,
+            error_code=ErrorCode.SERVER_ERROR,
+            error_message="Root server unavailable",
+        )
+
+    monkeypatch.setattr(resolver, "query_server", fake_query_server)
+
+    response = resolver.query_root_servers(query)
+
+    assert calls == [
+        (DEFAULT_HOST, first_root_port),
+        (DEFAULT_HOST, second_root_port),
+    ]
+
+    assert response.status == ResponseStatus.ERROR
+    assert response.error_code == ErrorCode.SERVER_ERROR
+    assert response.error_message == "All Root servers are unavailable"
