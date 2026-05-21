@@ -52,7 +52,6 @@ def test_recursive_resolution_e2e(tmp_path: Path) -> None:
     write_json(
         zones_path / google_zone,
         {
-            "domain": "google.com",
             "records": {
                 "maps.google.com": {
                     "A": {

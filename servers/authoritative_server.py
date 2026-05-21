@@ -34,9 +34,6 @@ class AuthoritativeServer(BaseDNSServer):
         """
         zone = load_json_file(self.zone_path / zone_name)
 
-        if "domain" not in zone:
-            raise ValueError("Invalid zone file: missing 'domain' field")
-
         if "records" not in zone:
             raise ValueError("Invalid zone file: missing 'records' field")
 

@@ -18,7 +18,6 @@ def create_zone_file(zones_path: Path) -> None:
     zones_path.mkdir(parents=True, exist_ok=True)
 
     zone = {
-        "domain": "google.com",
         "records": {
             "google.com": {
                 "A": {
@@ -66,7 +65,6 @@ def authoritative_server(tmp_path: Path) -> AuthoritativeServer:
 def test_load_zone(authoritative_server: AuthoritativeServer) -> None:
     zone = authoritative_server.load_zone("google.com")
 
-    assert zone["domain"] == "google.com"
     assert "google.com" in zone["records"]
     assert "maps.google.com" in zone["records"]
 
@@ -159,36 +157,6 @@ def test_load_unknown_zone_raises_file_not_found(
 ) -> None:
     with pytest.raises(FileNotFoundError):
         authoritative_server.load_zone("facebook.com")
-
-
-def test_load_zone_without_domain_field_raises_value_error(tmp_path: Path) -> None:
-    zones_path = tmp_path / "zones"
-    zones_path.mkdir(parents=True, exist_ok=True)
-
-    invalid_zone = {
-        "records": {
-            "google.com": {
-                "A": {
-                    "value": "142.250.74.68",
-                    "ttl": 300,
-                }
-            }
-        }
-    }
-
-    (zones_path / "google.com.json").write_text(
-        json.dumps(invalid_zone),
-        encoding="utf-8",
-    )
-
-    server = AuthoritativeServer(
-        host=DEFAULT_HOST,
-        port=TLD_DEFAULT_PORT,
-        zone_path=str(zones_path),
-    )
-
-    with pytest.raises(ValueError, match="missing 'domain' field"):
-        server.load_zone("google.com")
 
 
 def test_load_zone_without_records_field_raises_value_error(tmp_path: Path) -> None:
