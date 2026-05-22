@@ -73,3 +73,17 @@ services:
     depends_on:
       - root-1
       - root-2
+
+  gateway:
+      build: .
+      container_name: resolve-dns-gateway
+      command: >
+        python -m gateway.dns_gateway
+        --host 0.0.0.0
+        --port 53
+        --resolver-host resolver
+        --resolver-port 5300
+      ports:
+        - "53:53/udp"
+      depends_on:
+        - resolver

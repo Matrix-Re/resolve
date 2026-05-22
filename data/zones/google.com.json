@@ -1,5 +1,4 @@
 {
-  "domain": "google.com",
   "records": {
     "google.com": {
       "A": { "value": "8.8.8.8", "ttl": 300 },
