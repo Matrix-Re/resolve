@@ -7,6 +7,7 @@ from tkinter import messagebox, ttk
 
 from core.constants import JSON_EXTENSION
 from core.constants import DEFAULT_ZONES_DIR
+
 DEFAULT_ZONES_PATH = Path(DEFAULT_ZONES_DIR)
 DOMAIN_REGEX = re.compile(r"^[a-z0-9-]+(\.[a-z0-9-]+)+$")
 
