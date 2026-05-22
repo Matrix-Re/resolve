@@ -25,38 +25,48 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-## Lancer la chaîne DNS complète
+## Éditeur graphique de zones DNS
 
-Ouvrir plusieurs terminaux.
+Lancer l’interface permettant de créer, modifier et supprimer des zones DNS :
 
-### 1. Lancer le serveur autoritaire
 ```bash
-python -m servers.authoritative_server
+python -m admin.zone_editor
 ```
-### 2. Lancer le serveur TLD
+
+## Lancement rapide avec Docker
 ```bash
-python -m servers.tld_server
+docker compose up --build
 ```
-### 3. Lancer le serveur Root
-```bash
-python -m servers.root_server
-```
-### 4. Lancer le résolveur récursif
-```bash
-python -m resolver.recursive_resolver
-```
-### 5. Envoyer une requête DNS avec le client CLI
+
+### Envoyer une requête DNS avec le client CLI 
 ```bash
 python -m client.cli maps.google.com --type A --host 127.0.0.1 --port 5300
 ```
 
-## Côté dev
-
-### Lisibilité du code
-Utiliser Ruff pour vérifier et formater le code.
+### Envoyer une requête DNS au format standard
 ```bash
-ruff check .
-ruff format .
+nslookup maps.google.com 127.0.0.1
+```
+
+## Lancement manuel de la chaîne DNS complète
+
+Ouvrir plusieurs terminaux.
+
+#### 1. Lancer le serveur autoritaire
+```bash
+python -m servers.authoritative_server
+```
+#### 2. Lancer le serveur TLD
+```bash
+python -m servers.tld_server
+```
+#### 3. Lancer le serveur Root
+```bash
+python -m servers.root_server
+```
+#### 4. Lancer le résolveur récursif
+```bash
+python -m resolver.recursive_resolver
 ```
 
 ### Lancer les tests
@@ -74,4 +84,13 @@ pytest --cov=. --cov-report=term-missing
 Lancer les tests avec rapport html :
 ```bash
 pytest --cov=. --cov-report=html
+```
+
+## Côté dev
+
+### Lisibilité du code
+Utiliser Ruff pour vérifier et formater le code.
+```bash
+ruff check .
+ruff format .
 ```
