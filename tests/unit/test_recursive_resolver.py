@@ -326,9 +326,11 @@ def test_parse_args_with_custom_values(monkeypatch: pytest.MonkeyPatch) -> None:
     assert args.root_host == DEFAULT_HOST
     assert args.root_port == 5403
 
+
 # -------------------
 # ROOT FALLBACK TESTS
 # -------------------
+
 
 def test_query_root_servers_fallback_to_second_root(
     monkeypatch: pytest.MonkeyPatch,

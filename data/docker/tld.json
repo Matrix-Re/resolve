@@ -1,0 +1,6 @@
+{
+  "google.com": {
+    "host": "authoritative",
+    "port": 5303
+  }
+}
