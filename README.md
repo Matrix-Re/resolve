@@ -1,3 +1,5 @@
+<img src="dns-resolver.png" alt="Description de l'image" width="720" height="310">
+
 # ReSolve - Distributed DNS Simulator
 
 ## Description
